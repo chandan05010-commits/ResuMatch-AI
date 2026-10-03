@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: resumatch-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-resumatch}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-resumatch}
+      POSTGRES_DB: ${POSTGRES_DB:-resumatch}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-resumatch}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - resumatch-network
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: resumatch-backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-resumatch}:${POSTGRES_PASSWORD:-resumatch}@postgres:5432/${POSTGRES_DB:-resumatch}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
+      JWT_ACCESS_TOKEN_EXPIRE_MINUTES: ${JWT_ACCESS_TOKEN_EXPIRE_MINUTES:-15}
+      JWT_REFRESH_TOKEN_EXPIRE_DAYS: ${JWT_REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:8000}
+      API_URL: ${API_URL:-http://api:8001}
+      MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-10}
+      UPLOAD_DIR: /app/uploads
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
+      RATE_LIMIT_LOGIN: ${RATE_LIMIT_LOGIN:-5}
+      RATE_LIMIT_REGISTER: ${RATE_LIMIT_REGISTER:-3}
+      RATE_LIMIT_UPLOAD: ${RATE_LIMIT_UPLOAD:-10}
+      RATE_LIMIT_ANALYZE: ${RATE_LIMIT_ANALYZE:-20}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./backend:/app
+      - uploads_data:/app/uploads
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - resumatch-network
+    restart: unless-stopped
+    user: "1000:1000"
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: resumatch-api
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+      API_URL: ${API_URL:-http://localhost:8001}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    volumes:
+      - ./api:/app
+    ports:
+      - "8001:8001"
+    networks:
+      - resumatch-network
+    restart: unless-stopped
+    user: "1000:1000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: resumatch-frontend
+    environment:
+      VITE_API_URL: ${BACKEND_URL:-http://localhost:8000}
+      VITE_AI_API_URL: ${API_URL:-http://localhost:8001}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+      - api
+    networks:
+      - resumatch-network
+    restart: unless-stopped
+    user: "1000:1000"
+
+volumes:
+  postgres_data:
+  uploads_data:
+
+networks:
+  resumatch-network:
+    driver: bridge
