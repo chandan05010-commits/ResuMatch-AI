@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from 'react'
+import { Suspense, lazy } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { MainLayout } from './layouts/MainLayout'
 import { AuthLayout } from './layouts/AuthLayout'
@@ -11,6 +11,9 @@ import { Loader2 } from 'lucide-react'
 const HomePage = lazy(() => import('./pages/HomePage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
+const ForgotPasswordPage = lazy(
+  () => import('./pages/ForgotPasswordPage')
+)
 const AnalyzerPage = lazy(() => import('./pages/AnalyzerPage'))
 const ResultsPage = lazy(() => import('./pages/ResultsPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
@@ -57,6 +60,10 @@ function App() {
           <Route element={<PublicRoute />}>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route
+              path="/forgot-password"
+              element={<ForgotPasswordPage />}
+            />
           </Route>
         </Route>
       </Routes>

@@ -5,6 +5,11 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.database.session import init_db, close_db
 
+# Register database models
+from app.models.user import User
+from app.models.token import RefreshToken
+from app.models.password_reset import PasswordResetOTP
+
 from app.routes import (
     auth,
     resumes,
@@ -32,11 +37,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-
-# ============================================================
-# CORS
-# ============================================================
-
+# CORS configuration
 allowed_origins = list(
     set(
         settings.allowed_origins_list
@@ -53,20 +54,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=[
-        "GET",
-        "POST",
-        "PUT",
-        "DELETE",
-        "OPTIONS",
-    ],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-# ============================================================
-# ROUTERS
-# ============================================================
 
 # Authentication
 app.include_router(
@@ -75,14 +66,12 @@ app.include_router(
     tags=["authentication"],
 )
 
-
 # Resumes
 app.include_router(
     resumes.router,
     prefix="/api/resumes",
     tags=["resumes"],
 )
-
 
 # Job Descriptions
 app.include_router(
@@ -91,7 +80,6 @@ app.include_router(
     tags=["job-descriptions"],
 )
 
-
 # Analysis
 app.include_router(
     analysis.router,
@@ -99,14 +87,12 @@ app.include_router(
     tags=["analysis"],
 )
 
-
 # Applications
 app.include_router(
     applications.router,
     prefix="/api/applications",
     tags=["applications"],
 )
-
 
 # Dashboard
 app.include_router(
@@ -116,10 +102,6 @@ app.include_router(
 )
 
 
-# ============================================================
-# HEALTH CHECK
-# ============================================================
-
 @app.get("/health")
 async def health_check():
     return {
@@ -127,10 +109,6 @@ async def health_check():
         "service": "backend-api",
     }
 
-
-# ============================================================
-# ROOT
-# ============================================================
 
 @app.get("/")
 async def root():
